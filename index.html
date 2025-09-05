@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Editor Berita PAI B 23</title>
+<style>
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(to bottom, #4fc3f7, #0288d1);
+    color: #fff;
+    padding: 20px;
+    max-width: 900px;
+    margin: auto;
+  }
+  h2 { 
+    text-align:center; 
+    text-shadow:2px 2px 5px rgba(0,0,0,0.3); 
+  }
+  .box {
+    background: rgba(255,255,255,0.15);
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0px 5px 20px rgba(0,0,0,0.3);
+    backdrop-filter: blur(10px);
+  }
+  .form-container {
+    margin: auto;
+    text-align: left;
+  }
+  
+  label { 
+    display:block; 
+    margin:8px 0 4px; 
+    font-weight:bold; 
+  }
+  input, textarea, button { 
+    width:95%; 
+    padding:10px; 
+    border-radius:10px; 
+    border:none; 
+    outline:none; 
+    margin:5px 0; 
+  }
+  textarea { resize:vertical; }
+  button {
+    background:#0abab5; 
+    color:#fff; 
+    font-weight:bold; 
+    cursor:pointer; 
+    transition:0.3s;
+  }
+  button:hover { 
+    background:#089e9a; 
+    transform:scale(1.05); 
+  }
+  .news-card {
+    background: rgba(255,255,255,0.1);
+    border-radius:10px;
+    padding:15px 20px;
+    margin:8px 0;
+    text-align:left;
+    width: 100%;
+    max-width: 850px; /* lebih lebar */
+    box-shadow:0 4px 12px rgba(0,0,0,0.3);
+  }
+  .news-card h3 {
+    font-size: 20px;
+    font-weight: bold;
+    margin: 0 0 8px 0;
+    cursor: pointer;
+    color: #fff;
+  }
+  .news-card .meta {
+    font-size: 16px;
+    color: #fff;
+    margin-bottom: 10px;
+    font-style: italic;
+  }
+  .news-card .isi {
+    display: none;
+    margin-top: 10px;
+    animation: fadeIn 0.3s ease;
+  }
+  .news-card .isi p {
+    font-size: 15px;
+    line-height: 1.5em;
+    margin: 0 0 10px;
+  }
+  .actions button { 
+    width:auto; 
+    padding:5px 10px; 
+    margin-left:5px; 
+    font-size:15px; 
+  }
+  #status { 
+    margin-top:10px; 
+    font-weight:bold; 
+  }
+
+  /* Supaya berita terbaru otomatis di atas */
+  #newsList {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 8px; /* jarak antar berita lebih rapat */
+    align-items: center; /* rata tengah */
+  }
+
+  @keyframes fadeIn {
+    from { opacity:0; transform:translateY(-5px);}
+    to { opacity:1; transform:translateY(0);}
+  }
+</style>
+</head>
+<body>
+
+<div class="box">
+  <h2>Editor Berita</h2>
+  <form id="formBerita" class="form-container">
+    <label>Penulis:</label>
+    <input type="text" name="pembuat" required>
+    
+    <label>Judul:</label>
+    <input type="text" name="judul" required>
+
+    <label>Isi:</label>
+    <textarea name="isi" rows="5" required></textarea>
+
+    <button type="submit">SUBMIT</button>
+  </form>
+  <p id="status"></p>
+</div>
+
+<div class="box">
+  <h2>Daftar Berita</h2>
+  <div id="newsList"><p>Memuat berita...</p></div>
+</div>
+
+<script>
+const SANDI = "I LOVE U SHOLAH"; 
+const scriptURL = "https://script.google.com/macros/s/AKfycbwF3-lgkQR1xU7n1B_GsB8odU0C8ULq-yg5Pm6J7HOOO5dWxSIdwtxEq8fHQSIPYL_C/exec";
+
+const form = document.getElementById("formBerita");
+const status = document.getElementById("status");
+const newsList = document.getElementById("newsList");
+
+// Submit berita baru
+form.addEventListener("submit", e => {
+  e.preventDefault();
+  const enteredPass = prompt("Masukkan sandi admin untuk submit berita:");
+  if(enteredPass !== SANDI) { 
+    status.innerText="❌ Sandi salah!"; 
+    return; 
+  }
+
+  const formData = new FormData(form);
+  fetch(scriptURL, { method:"POST", body:formData })
+    .then(res => res.text())
+    .then(txt => { 
+      status.innerText = txt; 
+      form.reset(); 
+      loadNews(); 
+    })
+    .catch(err => { status.innerText = "Gagal: "+err; });
+});
+
+// Load daftar berita
+function loadNews() {
+  fetch(scriptURL)
+    .then(res => res.json())
+    .then(data => {
+      newsList.innerHTML = "";
+      if(data.length === 0) { 
+        newsList.innerHTML="<p>Tidak ada berita.</p>"; 
+        return; 
+      }
+
+      data.forEach((row, index) => {
+        const card = document.createElement("div");
+        card.className = "news-card";
+
+        card.innerHTML = `
+          <h3 onclick="toggleIsi(${index})">${row.judul}</h3>
+          <div class="meta">${row.tanggal} | Oleh: ${row.pembuat || "-"}</div>
+          <div id="isi-${index}" class="isi">
+            <p>${row.isi}</p>
+            <div class="actions" id="actions-${index}">
+              <button onclick="startEdit(${index})">Edit</button>
+              <button onclick="deleteNews(${index})">Hapus</button>
+            </div>
+          </div>
+        `;
+        newsList.appendChild(card);
+      });
+    })
+    .catch(err => newsList.innerHTML="<p>Error memuat berita</p>");
+}
+
+// Toggle isi berita
+function toggleIsi(i) {
+  const isiDiv = document.getElementById("isi-" + i);
+  isiDiv.style.display = (isiDiv.style.display === "none" || isiDiv.style.display === "") 
+    ? "block" 
+    : "none";
+}
+
+// Edit berita (form langsung muncul di card)
+function startEdit(i) {
+  fetch(scriptURL)
+    .then(res => res.json())
+    .then(data => {
+      const row = data[i];
+      if(!row) return;
+
+      const enteredPass = prompt("Masukkan sandi admin untuk edit berita:");
+      if(enteredPass !== SANDI) { 
+        alert("❌ Sandi salah!"); 
+        return; 
+      }
+
+      const isiDiv = document.getElementById("isi-" + i);
+      isiDiv.innerHTML = `
+        <label>Penulis:</label>
+        <input type="text" id="editPembuat-${i}" value="${row.pembuat || ""}">
+        <label>Judul:</label>
+        <input type="text" id="editJudul-${i}" value="${row.judul}">
+        <label>Isi:</label>
+        <textarea id="editIsi-${i}" rows="4">${row.isi}</textarea>
+        <button onclick="saveEdit(${i})">Simpan</button>
+        <button onclick="loadNews()">Batal</button>
+      `;
+      isiDiv.style.display = "block";
+    });
+}
+
+// Simpan edit berita
+function saveEdit(i) {
+  const pembuat = document.getElementById("editPembuat-"+i).value;
+  const judul = document.getElementById("editJudul-"+i).value;
+  const isi = document.getElementById("editIsi-"+i).value;
+
+  const formData = new FormData();
+  formData.append("editIndex", i);
+  formData.append("pembuat", pembuat);
+  formData.append("judul", judul);
+  formData.append("isi", isi);
+
+  fetch(scriptURL, { method:"POST", body:formData })
+    .then(res => res.text())
+    .then(txt => { 
+      status.innerText = txt; 
+      loadNews(); 
+    })
+    .catch(err => status.innerText = "❌ Gagal edit: " + err);
+}
+
+// Hapus berita
+function deleteNews(i) {
+  const enteredPass = prompt("Masukkan sandi admin untuk hapus berita:");
+  if(enteredPass !== SANDI) { alert("Sandi salah!"); return; }
+  if(!confirm("Hapus berita ini?")) return;
+
+  const formData = new FormData();
+  formData.append("deleteIndex", i);
+  fetch(scriptURL, { method:"POST", body:formData })
+    .then(res => res.text())
+    .then(txt => { status.innerText = txt; loadNews(); })
+    .catch(err => status.innerText = "Gagal: "+err);
+}
+
+loadNews();
+</script>
+
+</body>
+</html>
